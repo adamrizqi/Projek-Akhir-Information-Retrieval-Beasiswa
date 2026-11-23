@@ -2,7 +2,7 @@
 
 Projek Akhir Mata Kuliah **Information Retrieval (Temu Kembali Informasi)**.
 
-Sistem temu kembali informasi (IR) untuk mencari beasiswa berdasarkan kecocokan persyaratan (seperti semester, IPK, kondisi ekonomi, dan jenjang), mengimplementasikan materi praktikum IR minggu 3 hingga minggu 7.
+Sistem temu kembali informasi (IR) untuk mencari beasiswa berdasarkan kecocokan persyaratan (seperti semester, IPK, kondisi ekonomi, dan jenjang).
 
 
 
