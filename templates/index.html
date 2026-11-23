@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="id" data-type="software" data-radius="soft" data-buttons="solid" data-motion="on">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>BeasiswaIR — Cari beasiswa berdasarkan persyaratan</title>
+  <meta name="description" content="Mesin pencarian beasiswa berbasis TF-IDF dan Vector Space Model. Ketik persyaratan dan temukan beasiswa yang paling relevan.">
+  <meta name="page-type" content="software">
+  <meta name="site-kind" content="software">
+  <meta property="og:title" content="BeasiswaIR — Cari beasiswa berdasarkan persyaratan">
+  <meta property="og:description" content="Mesin pencarian beasiswa berbasis TF-IDF dan Vector Space Model.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#0a0f1e">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset & base ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+
+    /* ── Design tokens (--page software, palette: deep-navy/cyan) ── */
+    :root {
+      /* Palette */
+      --p-bg:        #0a0f1e;
+      --p-surface:   #111827;
+      --p-alt:       #161d2e;
+      --p-ink:       #f0f4ff;
+      --p-muted:     #8899b8;
+      --p-action:    #3b82f6;
+      --p-action-dk: #2563eb;
+      --p-hairline:  rgba(255,255,255,0.08);
+      --p-glass:     rgba(255,255,255,0.04);
+
+      /* Semantic status */
+      --c-open:      #22c55e;
+      --c-open-bg:   rgba(34,197,94,0.12);
+      --c-closed:    #ef4444;
+      --c-closed-bg: rgba(239,68,68,0.12);
+      --c-warn:      #f59e0b;
+      --c-warn-bg:   rgba(245,158,11,0.12);
+
+      /* Score badges */
+      --c-high:      #22c55e;
+      --c-high-bg:   rgba(34,197,94,0.15);
+      --c-mid:       #3b82f6;
+      --c-mid-bg:    rgba(59,130,246,0.15);
+      --c-low:       #94a3b8;
+      --c-low-bg:    rgba(148,163,184,0.12);
+
+      /* Spacing scale */
+      --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+      --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px;
+
+      /* Radius (soft) */
+      --r-lg: 20px; --r-md: 12px; --r-sm: 8px; --r-btn: 8px;
+
+      /* Type scale */
+      --t-h1:    clamp(32px, 4vw, 56px);
+      --t-h2:    clamp(22px, 2.5vw, 36px);
+      --t-lead:  clamp(16px, 1.3vw, 20px);
+      --t-body:  16px;
+      --t-small: 14px;
+      --t-label: 13px;
+      --t-mono:  13px;
+
+      /* Layout */
+      --nav:  64px;
+      --gut:  clamp(20px, 5vw, 80px);
+      --wrap: 1200px;
+    }
+
+    /* ── Typography ──────────────────────────────────────────── */
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: var(--t-body);
+      line-height: 1.6;
+      color: var(--p-ink);
+      background: var(--p-bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3, h4 {
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+
+    p { margin: 0; }
+
+    /* ── Layout helpers ────────────────────────────────────────── */
+    .wrap {
+      max-width: var(--wrap);
+      margin-inline: auto;
+      padding-inline: var(--gut);
+    }
+
+    /* ── Skip link ─────────────────────────────────────────────── */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: var(--gut);
+      background: var(--p-action);
+      color: #fff;
+      padding: var(--s-2) var(--s-5);
+      border-radius: 0 0 var(--r-sm) var(--r-sm);
+      font-size: var(--t-small);
+      font-weight: 600;
+      text-decoration: none;
+      z-index: 100;
+      transition: top 0.15s;
+    }
+    .skip-link:focus { top: 0; }
+
+    /* ── Nav ───────────────────────────────────────────────────── */
+    header.nav {
+      position: fixed;
+      inset: 0 0 auto;
+      height: var(--nav);
+      background: rgba(10,15,30,0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--p-hairline);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+    }
+    .nav__inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .nav__logo {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      text-decoration: none;
+      color: var(--p-ink);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .nav__logo-mark {
+      width: 32px;
+      height: 32px;
+      background: var(--p-action);
+      border-radius: var(--r-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--t-label);
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .nav__meta {
+      font-size: var(--t-label);
+      color: var(--p-muted);
+      display: flex;
+      align-items: center;
+      gap: var(--s-5);
+    }
+    .nav__pill {
+      background: var(--p-glass);
+      border: 1px solid var(--p-hairline);
+      border-radius: 999px;
+      padding: 4px var(--s-3);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--p-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .nav__pill .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--c-open);
+      display: inline-block;
+    }
+    .nav__total {
+      font-size: var(--t-label);
+      color: var(--p-muted);
+    }
+
+    /* ── Hero ──────────────────────────────────────────────────── */
+    .hero {
+      min-height: auto;
+      padding-top: calc(var(--nav) + 40px);
+      padding-bottom: 36px;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    /* shader-style ground: radial glow (tech page rule) */
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% -10%, rgba(59,130,246,0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 80% 60%, rgba(99,102,241,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    /* grid dots */
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    }
+    .hero__inner {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+    .hero__eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.25);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--p-action);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: var(--s-5);
+    }
+    .hero__eyebrow svg { flex-shrink: 0; }
+    .hero h1 {
+      font-size: var(--t-h1);
+      color: var(--p-ink);
+      max-width: 820px;
+      margin-inline: auto;
+      margin-bottom: var(--s-4);
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: var(--p-action);
+    }
+    .hero__lead {
+      font-size: var(--t-lead);
+      color: var(--p-muted);
+      max-width: 600px;
+      margin-inline: auto;
+      margin-bottom: var(--s-7);
+      line-height: 1.6;
+    }
+
+    /* ── Search card (app-frame) ───────────────────────────────── */
+    .search-frame {
+      background: var(--p-surface);
+      border: 1px solid var(--p-hairline);
+      border-radius: var(--r-lg);
+      padding: var(--s-6);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+      max-width: 960px;
+      margin-inline: auto;
+    }
+
+    .search-row {
+      display: flex;
+      gap: var(--s-3);
+      align-items: stretch;
+    }
+
+    .search-input-wrap {
+      flex: 2.2;
+      min-width: 320px;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search-input-wrap svg {
+      position: absolute;
+      left: 14px;
+      color: var(--p-muted);
+      pointer-events: none;
+      flex-shrink: 0;
+    }
+    #queryInput {
+      width: 100%;
+      height: 48px;
+      background: var(--p-alt);
+      border: 1px solid var(--p-hairline);
+      border-radius: var(--r-sm);
+      color: var(--p-ink);
+      font-family: inherit;
+      font-size: var(--t-body);
+      padding: 0 var(--s-4) 0 44px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #queryInput::placeholder { color: var(--p-muted); }
+    #queryInput:focus {
+      border-color: var(--p-action);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+
+    .filter-select {
+      height: 48px;
+      background: var(--p-alt);
+      border: 1px solid var(--p-hairline);
+      border-radius: var(--r-sm);
+      color: var(--p-ink);
+      font-family: inherit;
+      font-size: var(--t-small);
+      padding: 0 var(--s-4);
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      white-space: nowrap;
+    }
+    .filter-select:focus {
+      border-color: var(--p-action);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+    .filter-select option { background: var(--p-surface); }
+
+    .btn-search {
+      height: 48px;
+      background: var(--p-action);
+      color: #fff;
+      font-family: inherit;
+      font-size: var(--t-body);
+      font-weight: 600;
+      border: none;
+      border-radius: var(--r-btn);
+      padding: 0 var(--s-6);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+    }
+    .btn-search:hover { background: var(--p-action-dk); }
+    .btn-search:active { transform: translateY(1px); }
+    .btn-search:focus-visible {
+      outline: 2px solid var(--p-action);
+      outline-offset: 2px;
+    }
+
+    /* ── Quick queries ─────────────────────────────────────────── */
+    .quick-queries {
+      margin-top: var(--s-4);
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--s-2);
+      align-items: center;
+    }
+    .quick-label {
+      font-size: var(--t-label);
+      color: var(--p-muted);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .chip {
+      background: var(--p-glass);
+      border: 1px solid var(--p-hairline);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--p-muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+      font-family: inherit;
+      outline: none;
+    }
+    .chip:hover {
+      background: rgba(59,130,246,0.1);
+      border-color: rgba(59,130,246,0.3);
+      color: var(--p-action);
+    }
+    .chip:focus-visible {
+      outline: 2px solid var(--p-action);
+      outline-offset: 2px;
+    }
+
+    /* ── Results area ──────────────────────────────────────────── */
+    main#top {
+      padding-top: 0;
+    }
+
+    .results-area {
+      padding-top: 8px;
+      padding-bottom: var(--s-8);
+    }
+
+    .results-wrap {
+      max-width: 960px;
+      margin-inline: auto;
+      padding-inline: var(--gut);
+    }
+
+    .results-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--s-3);
+      margin-bottom: var(--s-5);
+    }
+    .results-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--p-ink);
+    }
+    .results-header h2 span {
+      color: var(--p-action);
+    }
+    .token-row {
+      font-size: var(--t-label);
+      color: var(--p-muted);
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--p-glass);
+      border: 1px solid var(--p-hairline);
+      border-radius: var(--r-sm);
+      padding: 4px var(--s-3);
+      max-width: 420px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Loading ───────────────────────────────────────────────── */
+    .loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: var(--s-7) 0;
+    }
+    .loading.visible { display: flex; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--p-hairline);
+      border-top-color: var(--p-action);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto var(--s-4);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading p {
+      font-size: var(--t-small);
+      color: var(--p-muted);
+    }
+
+    /* ── Empty state ───────────────────────────────────────────── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 48px var(--s-4);
+      background: rgba(18, 22, 41, 0.5);
+      border: 1px dashed var(--p-hairline);
+      border-radius: var(--r-lg);
+      margin: 0 auto;
+      max-width: 640px;
+      width: 100%;
+    }
+    .empty-state .icon {
+      width: 56px; height: 56px;
+      background: var(--p-glass);
+      border: 1px solid var(--p-hairline);
+      border-radius: var(--r-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--s-4);
+      color: var(--p-muted);
+    }
+    .empty-state h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--p-ink);
+      margin-bottom: var(--s-2);
+    }
+    .empty-state p {
+      font-size: var(--t-small);
+      color: var(--p-muted);
+      max-width: 440px;
+      margin-inline: auto;
+      line-height: 1.6;
+    }
+
+    /* ── Results grid ──────────────────────────────────────────── */
+    .results-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+    }
+
+    /* ── Scholarship card ──────────────────────────────────────── */
+    .s-card {
+      background: #121629;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--r-md);
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+    .s-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(59, 130, 246, 0.35);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    /* card header row */
+    .s-card__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--s-4);
+    }
+    .s-card__title-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+    .s-card__meta-badges {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .s-card__title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--p-ink);
+      line-height: 1.35;
+      margin: 0;
+    }
+    .s-card__side {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      flex-shrink: 0;
+    }
+
+    /* ── Badges ────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge--source-ind {
+      background: rgba(14,165,233,0.12);
+      color: #38bdf8;
+      border: 1px solid rgba(14,165,233,0.2);
+    }
+    .badge--open {
+      background: var(--c-open-bg);
+      color: var(--c-open);
+      border: 1px solid rgba(34,197,94,0.2);
+    }
+    .badge--closed {
+      background: var(--c-closed-bg);
+      color: var(--c-closed);
+      border: 1px solid rgba(239,68,68,0.2);
+    }
+    .badge--unknown {
+      background: var(--p-glass);
+      color: var(--p-muted);
+      border: 1px solid var(--p-hairline);
+    }
+    .badge--deadline {
+      background: var(--c-warn-bg);
+      color: var(--c-warn);
+      border: 1px solid rgba(245,158,11,0.2);
+    }
+    .badge--dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    /* ── Score badge (prominent) ───────────────────────────────── */
+    .score-badge {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1px;
+    }
+    .score-badge__num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .score-badge__label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+    .score-badge--high .score-badge__num { color: var(--c-high); }
+    .score-badge--mid  .score-badge__num { color: var(--c-mid);  }
+    .score-badge--low  .score-badge__num { color: var(--c-low);  }
+
+    /* rank number */
+    .rank-num {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--p-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Card title ────────────────────────────────────────────── */
+    .s-card__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--p-ink);
+      line-height: 1.4;
+      margin: 0;
+    }
+
+    /* ── Matched terms ─────────────────────────────────────────── */
+    .matched-terms {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--s-1);
+      align-items: center;
+    }
+    .matched-label {
+      font-size: 11px;
+      color: var(--p-muted);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .term-chip {
+      background: rgba(234,179,8,0.1);
+      border: 1px solid rgba(234,179,8,0.2);
+      color: #fbbf24;
+      border-radius: var(--r-sm);
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+
+    /* ── Requirements snippet ──────────────────────────────────── */
+    .req-snippet {
+      background: var(--p-alt);
+      border-left: 2px solid var(--p-action);
+      border-radius: 0 var(--r-sm) var(--r-sm) 0;
+      padding: var(--s-3) var(--s-4);
+      font-size: var(--t-label);
+      color: var(--p-muted);
+      line-height: 1.6;
+      flex: 1;
+    }
+    .req-snippet strong {
+      color: var(--p-ink);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: block;
+      margin-bottom: var(--s-1);
+    }
+
+    /* ── Card footer ───────────────────────────────────────────── */
+    .s-card__footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s-3);
+      padding-top: var(--s-4);
+      border-top: 1px solid var(--p-hairline);
+      flex-wrap: wrap;
+    }
+
+    .btn-detail {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+      background: var(--p-glass);
+      border: 1px solid var(--p-hairline);
+      border-radius: var(--r-btn);
+      color: var(--p-ink);
+      font-family: inherit;
+      font-size: var(--t-small);
+      font-weight: 600;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn-detail:hover {
+      background: rgba(59,130,246,0.1);
+      border-color: rgba(59,130,246,0.3);
+      color: var(--p-action);
+    }
+    .btn-detail:focus-visible {
+      outline: 2px solid var(--p-action);
+      outline-offset: 2px;
+    }
+
+    .btn-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: var(--t-label);
+      color: var(--p-action);
+      text-decoration: none;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .btn-link:hover { opacity: 0.75; }
+    .btn-link:focus-visible {
+      outline: 2px solid var(--p-action);
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
+    /* ── Modal ─────────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: var(--s-5);
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: var(--p-surface);
+      border: 1px solid var(--p-hairline);
+      border-radius: var(--r-lg);
+      width: 100%;
+      max-width: 680px;
+      max-height: 85svh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+    .modal__head {
+      padding: var(--s-5) var(--s-6);
+      border-bottom: 1px solid var(--p-hairline);
+      display: flex;
+      align-items: flex-start;
+      gap: var(--s-4);
+    }
+    .modal__head-left { flex: 1; min-width: 0; }
+    .modal__badges { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-bottom: var(--s-3); }
+    .modal__title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--p-ink);
+      line-height: 1.3;
+    }
+    .modal__close {
+      background: var(--p-glass);
+      border: 1px solid var(--p-hairline);
+      border-radius: var(--r-sm);
+      color: var(--p-muted);
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .modal__close:hover { background: var(--p-alt); color: var(--p-ink); }
+    .modal__close:focus-visible {
+      outline: 2px solid var(--p-action);
+      outline-offset: 2px;
+    }
+    .modal__body {
+      overflow-y: auto;
+      padding: var(--s-6);
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-5);
+    }
+    .modal__section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--p-muted);
+      margin-bottom: var(--s-3);
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+    }
+    .modal__section-label svg { color: var(--p-action); }
+    .modal__pre {
+      background: var(--p-alt);
+      border: 1px solid var(--p-hairline);
+      border-radius: var(--r-md);
+      padding: var(--s-4);
+      font-size: var(--t-small);
+      color: var(--p-muted);
+      white-space: pre-wrap;
+      line-height: 1.7;
+      margin: 0;
+      font-family: inherit;
+    }
+    .modal__foot {
+      padding: var(--s-4) var(--s-6);
+      border-top: 1px solid var(--p-hairline);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s-3);
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+      background: var(--p-action);
+      color: #fff;
+      border: none;
+      border-radius: var(--r-btn);
+      font-family: inherit;
+      font-size: var(--t-small);
+      font-weight: 600;
+      padding: 10px 20px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary:hover { background: var(--p-action-dk); }
+    .btn-primary:focus-visible {
+      outline: 2px solid var(--p-action);
+      outline-offset: 2px;
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+      background: var(--p-glass);
+      border: 1px solid var(--p-hairline);
+      border-radius: var(--r-btn);
+      color: var(--p-muted);
+      font-family: inherit;
+      font-size: var(--t-small);
+      font-weight: 600;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-secondary:hover { background: var(--p-alt); color: var(--p-ink); }
+    .btn-secondary:focus-visible {
+      outline: 2px solid var(--p-action);
+      outline-offset: 2px;
+    }
+
+    /* ── Footer ────────────────────────────────────────────────── */
+    footer.closing {
+      border-top: 1px solid var(--p-hairline);
+      padding-block: var(--s-6);
+      margin-top: var(--s-7);
+    }
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s-5);
+      flex-wrap: wrap;
+    }
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      text-decoration: none;
+      color: var(--p-ink);
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .footer-logo-mark {
+      width: 24px; height: 24px;
+      background: var(--p-action);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .footer-legal {
+      font-size: 12px;
+      color: var(--p-muted);
+    }
+
+    /* ── Responsive ────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .search-row {
+        flex-direction: column;
+      }
+      .filter-select { width: 100%; }
+      .btn-search { width: 100%; justify-content: center; }
+      .results-header { flex-direction: column; align-items: flex-start; }
+      .token-row { max-width: 100%; }
+      .s-card__footer { gap: var(--s-2); }
+      .modal__foot { justify-content: flex-end; }
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 28px; }
+      .hero__lead { font-size: 15px; }
+      .search-frame { padding: var(--s-4); }
+    }
+
+    /* ── Utility ───────────────────────────────────────────────── */
+    .d-none { display: none !important; }
+
+    /* ── Reduced motion ────────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <header class="nav" role="banner">
+    <div class="wrap nav__inner">
+      <a class="skip-link" href="#top">Lewati ke konten</a>
+      <a class="nav__logo" href="/" aria-label="BeasiswaIR beranda">
+        <span class="nav__logo-mark" aria-hidden="true">IR</span>
+        BeasiswaIR
+      </a>
+      <div class="nav__meta">
+        <span class="nav__pill">
+          <span class="dot" aria-hidden="true"></span>
+          TF-IDF · VSM
+        </span>
+        <span class="nav__pill" style="color:var(--p-action);border-color:rgba(59,130,246,0.25);background:rgba(59,130,246,0.08);" aria-label="Sumber data korpus">
+          Sumber: Indbeasiswa
+        </span>
+        <span class="nav__total" id="navTotal" aria-label="Total dokumen terindeks">{{ total_docs }} beasiswa</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main id="top">
+
+    <!-- Hero + Search -->
+    <section class="hero" data-enter aria-label="Pencarian beasiswa">
+      <div class="wrap hero__inner">
+        <div class="hero__eyebrow" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M6 4v2.5l1.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          Sistem Pencarian IR &middot; {{ total_docs }} Dokumen Terindeks
+        </div>
+
+        <h1>Cari beasiswa yang <em>cocok</em><br>dengan persyaratanmu</h1>
+
+        <p class="hero__lead">
+          Ketik kriteria persyaratan&mdash;semester, IPK, kondisi ekonomi, jenjang&mdash;dan mesin TF-IDF akan meranking beasiswa berdasarkan kecocokan isi teks persyaratan, bukan nama beasiswa.
+        </p>
+
+        <!-- Search frame (app-frame) -->
+        <div class="search-frame" role="search">
+          <form id="searchForm" onsubmit="event.preventDefault(); doSearch();">
+            <div class="search-row">
+              <!-- Query input -->
+              <div class="search-input-wrap">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                  <circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M13 13l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <label for="queryInput" class="d-none">Kata kunci persyaratan</label>
+                <input
+                  type="search"
+                  id="queryInput"
+                  name="q"
+                  placeholder="mis: semester 3 minimal ipk 3.25 kurang mampu..."
+                  autocomplete="off"
+                  spellcheck="false"
+                >
+              </div>
+
+              <!-- Jenjang filter -->
+              <label for="jenjangSelect" class="d-none">Filter jenjang</label>
+              <select id="jenjangSelect" class="filter-select" aria-label="Filter jenjang">
+                <option value="all">Semua Jenjang</option>
+                <option value="s1">S1</option>
+                <option value="d4">D4</option>
+                <option value="d3">D3</option>
+              </select>
+
+              <!-- Status filter -->
+              <label for="statusSelect" class="d-none">Filter status pendaftaran</label>
+              <select id="statusSelect" class="filter-select" aria-label="Filter status pendaftaran">
+                <option value="all">Semua Status</option>
+                <option value="dibuka">Dibuka</option>
+                <option value="ditutup">Ditutup</option>
+              </select>
+
+              <!-- Submit -->
+              <button type="submit" class="btn-search">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M11 11l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                Cari
+              </button>
+            </div>
+
+            <!-- Quick queries -->
+            <div class="quick-queries" role="group" aria-label="Contoh query cepat">
+              <span class="quick-label">Contoh:</span>
+              <button type="button" class="chip" onclick="setQuery('semester 3 minimal ipk 3.25')">semester 3 ipk 3.25</button>
+              <button type="button" class="chip" onclick="setQuery('kondisi ekonomi kurang mampu sktm')">kondisi ekonomi sktm</button>
+              <button type="button" class="chip" onclick="setQuery('beasiswa d3 politeknik gratis')">d3 politeknik gratis</button>
+              <button type="button" class="chip" onclick="setQuery('mahasiswa d4 s1 minimal ipk 3.00')">d4 s1 ipk 3.00</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section class="results-area" aria-live="polite" aria-label="Hasil pencarian">
+      <div class="results-wrap">
+
+        <!-- Results header (hidden until search) -->
+        <div class="results-header d-none" id="statusArea">
+          <h2 id="resultHeader">Hasil Pencarian</h2>
+          <span class="token-row" id="queryTokensText" aria-label="Token vektor query"></span>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loadingSpinner" aria-label="Memproses pencarian" role="status">
+          <div class="spinner" aria-hidden="true"></div>
+          <p>Menghitung Cosine Similarity &amp; TF-IDF&hellip;</p>
+        </div>
+
+        <!-- Results grid / container -->
+        <div class="results-grid" id="resultsContainer">
+          <!-- Initial state -->
+          <div class="empty-state" id="emptyState">
+            <div class="icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3>Mulai pencarian</h3>
+            <p>Ketik kata kunci persyaratan di atas. Sistem akan menghitung bobot TF-IDF dan meranking beasiswa berdasarkan Cosine Similarity.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Detail Modal -->
+  <div class="modal-backdrop" id="detailBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal" id="detailModal">
+      <div class="modal__head">
+        <div class="modal__head-left">
+          <div class="modal__badges" id="modalBadges"></div>
+          <h2 class="modal__title" id="modalTitle"></h2>
+        </div>
+        <button class="modal__close" onclick="closeModal()" aria-label="Tutup dialog">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal__body">
+        <!-- Persyaratan -->
+        <div>
+          <div class="modal__section-label">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M4 7h6M4 4.5h6M4 9.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+              <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/>
+            </svg>
+            Persyaratan Lengkap
+          </div>
+          <pre class="modal__pre" id="modalRequirements"></pre>
+        </div>
+
+        <!-- Dokumen -->
+        <div id="modalDocsWrapper">
+          <div class="modal__section-label">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M5 1H3a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V5L8 1H5z" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M8 1v4h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Berkas Dokumen
+          </div>
+          <pre class="modal__pre" id="modalDocs"></pre>
+        </div>
+
+        <!-- Cakupan -->
+        <div id="modalCovWrapper">
+          <div class="modal__section-label">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M7 1l1.5 3.5L12 5l-2.5 2.5.5 3.5L7 9.5 4 11l.5-3.5L2 5l3.5-.5L7 1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+            </svg>
+            Cakupan &amp; Fasilitas
+          </div>
+          <pre class="modal__pre" id="modalCoverage"></pre>
+        </div>
+      </div>
+
+      <div class="modal__foot">
+        <a href="#" target="_blank" rel="noopener noreferrer" class="btn-primary" id="modalLink">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M6 2H2a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V8M9 1h4m0 0v4m0-4L6 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Buka Tautan Asli
+        </a>
+        <button class="btn-secondary" onclick="closeModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="closing" role="contentinfo">
+    <div class="wrap footer-inner">
+      <a class="footer-logo" href="/">
+        <span class="footer-logo-mark" aria-hidden="true">IR</span>
+        BeasiswaIR
+      </a>
+      <p class="footer-legal">
+        &copy; 2026 &middot; TF-IDF Vector Space Model &middot;
+        Data: <a href="https://indbeasiswa.com" target="_blank" rel="noopener noreferrer" class="btn-link" style="font-size:12px;">Indbeasiswa</a>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    'use strict';
+
+    let currentResults = [];
+
+    /* ── Quick query ──────────────────────────────────────────── */
+    function setQuery(text) {
+      document.getElementById('queryInput').value = text;
+      doSearch();
+    }
+
+    /* ── Search ───────────────────────────────────────────────── */
+    async function doSearch() {
+      const query = document.getElementById('queryInput').value.trim();
+      if (!query) return;
+
+      const jenjang = document.getElementById('jenjangSelect').value;
+      const status  = document.getElementById('statusSelect').value;
+
+      /* Show loading, clear results */
+      document.getElementById('emptyState') && hideEl('emptyState');
+      showEl('loadingSpinner', 'flex');
+      document.getElementById('resultsContainer').innerHTML = '';
+      hideEl('statusArea');
+
+      try {
+        const res  = await fetch(`/api/search?q=${encodeURIComponent(query)}&jenjang=${jenjang}&status=${status}`);
+        const data = await res.json();
+        currentResults = data.results;
+
+        hideEl('loadingSpinner');
+        showEl('statusArea', 'flex');
+
+        document.getElementById('resultHeader').innerHTML =
+          `Ditemukan <span>${data.count}</span> beasiswa relevan`;
+        document.getElementById('queryTokensText').textContent =
+          `tokens: [${data.query_tokens.join(', ')}]`;
+
+        if (data.results.length === 0) {
+          document.getElementById('resultsContainer').innerHTML = `
+            <div class="empty-state" style="grid-column:1/-1">
+              <div class="icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M16 16l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <path d="M9 11h4M11 9v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <h3>Tidak ada hasil</h3>
+              <p>Tidak ada beasiswa yang cocok dengan kata kunci tersebut. Coba kata kunci lain seperti &ldquo;semester&rdquo;, &ldquo;ipk 3.0&rdquo;, &ldquo;sktm&rdquo;, atau &ldquo;s1&rdquo;.</p>
+            </div>
+          `;
+          return;
+        }
+
+        const html = data.results.map((item, idx) => buildCard(item, idx)).join('');
+        document.getElementById('resultsContainer').innerHTML = html;
+
+      } catch (err) {
+        hideEl('loadingSpinner');
+        document.getElementById('resultsContainer').innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <h3>Kesalahan pencarian</h3>
+            <p>${escHtml(String(err))}</p>
+          </div>
+        `;
+      }
+    }
+
+    /* ── Build card HTML ─────────────────────────────────────── */
+    function buildCard(item, idx) {
+      const scoreClass = item.score > 0.25 ? 'high' : item.score > 0.15 ? 'mid' : 'low';
+
+      const srcBadge = `<span class="badge badge--source-ind">${escHtml(item.source)}</span>`;
+
+      const statusBadge = item.status === 'Dibuka'
+        ? `<span class="badge badge--open"><span class="badge--dot" aria-hidden="true"></span>Dibuka</span>`
+        : item.status === 'Ditutup'
+        ? `<span class="badge badge--closed"><span class="badge--dot" aria-hidden="true"></span>Ditutup</span>`
+        : `<span class="badge badge--unknown">${escHtml(item.status || 'Info')}</span>`;
+
+      const deadlineBadge = (item.deadline && item.deadline !== '-')
+        ? `<span class="badge badge--deadline">
+             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><rect x="1" y="2" width="8" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M3 1v2M7 1v2M1 5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+             ${escHtml(item.deadline)}
+           </span>`
+        : '';
+
+      const terms = item.matched_terms.length
+        ? item.matched_terms.map(t => `<span class="term-chip">${escHtml(t)}</span>`).join('')
+        : '<span style="font-size:11px;color:var(--p-muted)">—</span>';
+
+      return `
+        <article class="s-card" aria-label="Beasiswa: ${escHtml(item.title)}">
+          <div class="s-card__head">
+            <div class="s-card__title-wrap">
+              <div class="s-card__meta-badges">
+                <span class="rank-num" aria-label="Peringkat ${idx+1}">#${idx+1}</span>
+                ${srcBadge}
+                ${deadlineBadge}
+              </div>
+              <h3 class="s-card__title">
+                ${escHtml(item.title)}
+              </h3>
+            </div>
+            <div class="s-card__side">
+              ${statusBadge}
+              <div class="score-badge score-badge--${scoreClass}">
+                <span class="score-badge__num" title="Skor Cosine Similarity">${item.score.toFixed(4)}</span>
+                <span class="score-badge__label">cosine sim</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="req-snippet">
+            <strong>Potongan persyaratan</strong>
+            ${escHtml(item.requirements)}
+          </div>
+
+          <div class="s-card__footer">
+            <div class="matched-terms">
+              <span class="matched-label">Kata cocok:</span>
+              ${terms}
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-left:auto;">
+              <button
+                class="btn-detail"
+                onclick="showDetail(${idx})"
+                aria-label="Baca persyaratan penuh ${escHtml(item.title)}"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                  <circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.3"/>
+                  <path d="M1 7c1.5-3.5 10-3.5 12 0C11.5 10.5 2.5 10.5 1 7z" stroke="currentColor" stroke-width="1.3"/>
+                </svg>
+                Persyaratan penuh
+              </button>
+              <a
+                href="${escHtml(item.url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn-link"
+                aria-label="Buka tautan sumber ${escHtml(item.title)} di tab baru"
+              >
+                Tautan web
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+                  <path d="M5 2H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V6M7 1h3m0 0v3m0-3L5 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    /* ── Detail modal ────────────────────────────────────────── */
+    function showDetail(idx) {
+      const item = currentResults[idx];
+      if (!item) return;
+
+      /* Badges */
+      const srcBadge = `<span class="badge badge--source-ind">${escHtml(item.source)}</span>`;
+      const statusBadge = item.status === 'Dibuka'
+        ? `<span class="badge badge--open"><span class="badge--dot" aria-hidden="true"></span>Dibuka</span>`
+        : item.status === 'Ditutup'
+        ? `<span class="badge badge--closed"><span class="badge--dot" aria-hidden="true"></span>Ditutup</span>`
+        : `<span class="badge badge--unknown">${escHtml(item.status || 'Info')}</span>`;
+      const deadlineBadge = (item.deadline && item.deadline !== '-')
+        ? `<span class="badge badge--deadline">Deadline: ${escHtml(item.deadline)}</span>` : '';
+      const scoreBadge = `<span class="badge" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);color:var(--p-action);font-family:'JetBrains Mono',monospace;">Cosine: ${item.score.toFixed(4)}</span>`;
+
+      document.getElementById('modalBadges').innerHTML = srcBadge + statusBadge + deadlineBadge + scoreBadge;
+      document.getElementById('modalTitle').textContent = item.title;
+      document.getElementById('modalRequirements').textContent = item.full_requirements || 'Tidak ada detail teks.';
+      document.getElementById('modalLink').href = item.url;
+
+      const docsEl = document.getElementById('modalDocsWrapper');
+      if (item.documents && item.documents.trim()) {
+        docsEl.classList.remove('d-none');
+        document.getElementById('modalDocs').textContent = item.documents;
+      } else {
+        docsEl.classList.add('d-none');
+      }
+
+      const covEl = document.getElementById('modalCovWrapper');
+      if (item.coverage && item.coverage.trim()) {
+        covEl.classList.remove('d-none');
+        document.getElementById('modalCoverage').textContent = item.coverage;
+      } else {
+        covEl.classList.add('d-none');
+      }
+
+      document.getElementById('detailBackdrop').classList.add('open');
+      document.getElementById('detailModal').querySelector('.modal__close').focus();
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('detailBackdrop').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    /* Close on backdrop click */
+    document.getElementById('detailBackdrop').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    /* Close on Escape */
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    /* ── Helpers ─────────────────────────────────────────────── */
+    function showEl(id, display) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.display = display || 'block';
+        el.classList.remove('d-none');
+      }
+    }
+    function hideEl(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('d-none');
+    }
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+
+</body>
+</html>
